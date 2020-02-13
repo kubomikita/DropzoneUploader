@@ -290,6 +290,41 @@ class DropzoneUploader extends Nette\Application\UI\Control
 		}
 	}
 
+	/**
+	 * @param string|null $folder
+	 * @param string|null $file
+	 *
+	 * @throws Nette\Application\AbortException
+	 */
+	public function handlePreview(string $folder = null, string $file = null): void
+	{
+		if($file !== null) {
+
+			$gDriveViewer = ["doc","docx","xls","xlsx","csv"];
+
+			$this->uploadDriver->setFolder($folder);
+			$rdir = $this->uploadDriver->getSettings()["dir"]."/".$folder."/".$file;
+			$dir = WWW_DIR."/".$rdir;
+
+			$ext = pathinfo($dir, PATHINFO_EXTENSION);
+			if(!in_array($ext,$gDriveViewer)) {
+				$mime = mime_content_type( $dir );
+				$filename = Nette\Utils\Strings::replace( $file, '/^([0-9]+_)/m', "" );
+
+				$this->presenter->getHttpResponse()->setHeader( "Content-Type", $mime );
+				$this->presenter->getHttpResponse()->setHeader( "Content-Disposition",
+					'inline; filename="' . $filename . '"' );
+				echo readfile( $dir );
+			} else {
+				$viewer = 'https://docs.google.com/viewerng/viewer?url={url}&chrome=false&dov=1';
+				$params = $this->presenter->context->getParameters();
+				$redirect = str_replace("{url}", $params["url"]."/".$rdir, $viewer);
+				header("Location: ".$redirect);
+			}
+		}
+		$this->presenter->terminate();
+	}
+
 
 	/**
 	 * @param string
